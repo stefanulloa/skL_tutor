@@ -1,11 +1,13 @@
 #from tutorial: https://www.dataquest.io/blog/pandas-python-tutorial/
+# %%
+import pandas as pd
+import matplotlib
+
+import math
+import numpy as np
 
 def part1():
-    #%%
-    #above comment to activate "run cell" to see histograms
-    import pandas as pd
-    import matplotlib
-
+    
     #read data on DataFrame type
     reviews = pd.read_csv(".\data\ign.csv")
     #shape of dataframe
@@ -82,5 +84,119 @@ def part1():
     reviews[reviews["platform"]=="Xbox One"]["score"].plot(kind="hist")
     reviews[reviews["platform"]=="PlayStation 4"]["score"].plot(kind="hist")
 
-    # %%
 
+def part2():
+
+    #scaping because \t produces error
+    polling = pd.read_csv(".\\data\\thanksgiving-2015-poll-data.csv")
+
+    #output only the different possible values for a given column
+    uniqueValuesOfColumns = polling["Do you celebrate Thanksgiving?"].unique()
+
+    #get the name of columns by position
+    someColumnNames = polling.columns[50:]
+
+    ##FUNCTIONS##
+
+    #check how many values there of the unique values for a given column
+    #dropna also counts nan values
+    countValuesOfColumn = polling["What is your gender?"].value_counts(dropna=False)
+
+    #apply transformation method to each row individually
+    #new column added
+    polling["new_gender"] = polling["What is your gender?"].apply(fromGenderToNumeric)
+    #count values after transformation
+    countValuesOfNGenderCol = polling["new_gender"].value_counts(dropna=False)
+
+    #apply a lambda operation with apply. it will work on clumns by default
+    #to work on row level, use axis=1 as argument
+    #dtype will output the type of each column
+    lambdaoperation = polling.apply(lambda x: x.dtype).head()
+
+    #check unique values for given column
+    moneyOfHouseholdLastYear = polling["How much total combined money did all members of your HOUSEHOLD earn last year?"].value_counts(dropna=False)
+
+    #apply transformation on income and create new column
+    polling["newIncomeCol"] = polling["How much total combined money did all members of your HOUSEHOLD earn last year?"].apply(clean_income)
+    
+    ##GROUPING##
+
+    #check (and count) unique value of type of sauce column
+    countValuesOnSauceCol = polling["What type of cranberry saucedo you typically have?"].value_counts()
+    
+    #new dataframes on condition of type of sauce
+    homemade = polling[polling["What type of cranberry saucedo you typically have?"] == "Homemade"]
+    canned = polling[polling["What type of cranberry saucedo you typically have?"] == "Canned"]
+    #mean for each type of sauce
+    meanHomemade = homemade["newIncomeCol"].mean()
+    meanCanned = canned["newIncomeCol"].mean()
+
+    #instead of the previous process, we can directly make groups of dataframes depending on sauce
+    grouped = polling.groupby("What type of cranberry saucedo you typically have?")
+    #to check set of row indices for each sauce case
+    setOnSauceGroups = grouped.groups
+    #how many rows for each group
+    countRowsOnSauceGroups = grouped.size()
+
+    #get info of groups
+    for name, group in grouped:
+        print(name,group.shape,type(group))
+
+    #create groups of series (each series depeds on the sauce type)
+    incomeOnSauceGroups = grouped["newIncomeCol"]
+
+    ##AGREGATION##
+
+    #agg applies the same function to a group of series in parallel
+    avgForSauceGroupSeries = grouped["newIncomeCol"].agg(np.mean)
+
+    #if no column specified, agg will perform on every column
+    #in this case, mean only works on data with numeric values
+    avgForSauceGroupDataFrames = grouped.agg(np.mean)
+    #to visually compare
+    avgForSauceGroupSeries.plot(kind="bar")
+
+    #groups using two columns for groupby
+    grouped2 = polling.groupby(["What type of cranberry saucedo you typically have?","What is typically the main dish at your Thanksgiving dinner?"])
+    #mean depending on combinations of two types (from the two columns)
+    meanGroups2Col = grouped2.agg(np.mean)
+
+    #calculate mean, sum and std on income column for the grouped object
+    operationsGroups2Col = grouped2["newIncomeCol"].agg([np.mean, np.sum, np.std])
+    
+    grouped3 = polling.groupby("How would you describe where you live?")["What is typically the main dish at your Thanksgiving dinner?"]
+    countGroup3 = grouped3.apply(lambda x:x.value_counts())
+    print(grouped3.size())
+
+
+#method transforms string values to 0 (male) or 1 (female), nan is the same
+#each row will be applied this method individually
+def fromGenderToNumeric(genderString):
+    #isnan only works on numeric values, so we need to check first the type is float (nan is float)
+    if isinstance(genderString, float):
+        if math.isnan(genderString):
+            return genderString
+    #in case it is female, casting comparison to int transforms to 1. for male, it is 0
+    return int(genderString == "Female")
+
+#if 200000 on upwards: 200000
+#if prefer not to answer or nan: nan
+#if range: avg
+def clean_income(value):
+    if value == "$200,000 and up":
+        return 200000
+    elif value == "Prefer not to answer":
+        return np.nan
+    elif isinstance(value,float):
+        if math.isnan(value):
+            return np.nan
+
+    #getting rid of commas and $
+    value = value.replace(",", "").replace("$", "")
+    low, high = value.split(" to ")
+    #return avg value
+    return (int(low)+int(high))/2
+
+part2()
+
+# %%
