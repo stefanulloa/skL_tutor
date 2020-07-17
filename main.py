@@ -6,7 +6,7 @@ import matplotlib
 import math
 import numpy as np
 
-def part1():
+def pandasPart1():
     
     #read data on DataFrame type
     reviews = pd.read_csv(".\data\ign.csv")
@@ -85,7 +85,7 @@ def part1():
     reviews[reviews["platform"]=="PlayStation 4"]["score"].plot(kind="hist")
 
 
-def part2():
+def pandasPart2():
 
     #scaping because \t produces error
     polling = pd.read_csv(".\\data\\thanksgiving-2015-poll-data.csv")
@@ -146,6 +146,8 @@ def part2():
     incomeOnSauceGroups = grouped["newIncomeCol"]
 
     ##AGREGATION##
+    #IMPORTANT: agg() only works for functions that return one value, if it returns more we have to use apply()
+    #agg() lets use many functions at the same time, apply() does not
 
     #agg applies the same function to a group of series in parallel
     avgForSauceGroupSeries = grouped["newIncomeCol"].agg(np.mean)
@@ -164,9 +166,15 @@ def part2():
     #calculate mean, sum and std on income column for the grouped object
     operationsGroups2Col = grouped2["newIncomeCol"].agg([np.mean, np.sum, np.std])
     
+    #apply is a different way of using methods on groups
+    #we get groups by type of location, from those we choose just the dishes column for each group
     grouped3 = polling.groupby("How would you describe where you live?")["What is typically the main dish at your Thanksgiving dinner?"]
+    #we will count every instance
+    #because value_counts returns 2 or more values, we cannot use agg()
+    #so we have to use apply which will combine the results
     countGroup3 = grouped3.apply(lambda x:x.value_counts())
-    print(grouped3.size())
+    print('hey')
+    print(countGroup3)
 
 
 #method transforms string values to 0 (male) or 1 (female), nan is the same
@@ -197,6 +205,6 @@ def clean_income(value):
     #return avg value
     return (int(low)+int(high))/2
 
-part2()
+
 
 # %%
