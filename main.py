@@ -1,7 +1,7 @@
 #from tutorial: https://www.dataquest.io/blog/pandas-python-tutorial/
 # %%
 import pandas as pd
-import matplotlib
+import matplotlib.pyplot as plt
 
 import math
 import numpy as np
@@ -173,8 +173,6 @@ def pandasPart2():
     #because value_counts returns 2 or more values, we cannot use agg()
     #so we have to use apply which will combine the results
     countGroup3 = grouped3.apply(lambda x:x.value_counts())
-    print('hey')
-    print(countGroup3)
 
 
 #method transforms string values to 0 (male) or 1 (female), nan is the same
@@ -205,6 +203,64 @@ def clean_income(value):
     #return avg value
     return (int(low)+int(high))/2
 
+def haversineFormula(lon1, lat1, lon2, lat2):
+
+    R_earth = 6371 #km
+
+    lon1, lat1, lon2, lat2 = [float(lon1), float(lat1), float(lon2), float(lat2)]
+
+    lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+
+    dlon = lon2-lon1
+    dlat = lat2-lat1
+
+    a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+    c = 2*math.asin(math.sqrt(a))
+    d = R_earth*c
+    return d
+
+def calc_distance(row, airports):
+    dist = 0
+
+    try:
+        
+        #we get the airport data for a given route (source airport and dest airport)
+        #we use iloc[0] to get rid of unnecessary info, otherwise we
+        #would also get index, col name and type, we just need value
+        source = airports[airports["id"] == row["source_id"]].iloc[0]
+        dest = airports[airports["id"] == row["dest_id"]].iloc[0]
+
+        dist = haversineFormula(dest["longitude"], dest["latitude"], source["longitude"], source["latitude"])
+
+    #we need exception in case there is data that cannot be processed
+    except (ValueError, IndexError):
+        pass
+
+    return dist
 
 
-# %%
+def dataVisualization():
+    
+    airports = pd.read_csv(".\data\\airports.csv", header=None, dtype=str)
+
+    #the data doesnt have headers, so we need to add them
+    airports.columns = ["id", "name", "city", "country", "code", "icao", "latitude", "longitude", "altitude", "offset", "dst", "timezone", "more1", "more2"]
+
+    #skiprows to ignore the first row which doesnt have useful info
+    airlines = pd.read_csv(".\data\\airlines.csv", skiprows=[0], header=None, dtype=str)
+    airlines.columns = ["id", "name", "alias", "iata", "icao", "callsign", "country", "active"]
+
+    routes = pd.read_csv(".\data\\routes.csv", header=None, dtype=str)
+    routes.columns = ["airline", "airline_id", "source", "source_id", "dest", "dest_id", "codeshare", "stops", "equipment"]
+
+    #in the airline_id there are rows with a value "\N", so we need to take them out
+    routes = routes[routes["airline_id"] != "\\N"]
+
+    #axis=1 to apply on row level
+    route_lengths = routes.apply(calc_distance, args=(airports,), axis=1)
+
+    plt.hist(route_lengths, bins=20)
+    print('hey')
+
+dataVisualization()
+
